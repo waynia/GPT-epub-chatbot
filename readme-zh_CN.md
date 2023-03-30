@@ -20,5 +20,5 @@
 
 4）对话记录可以点击界面中的链接下载。
 
-5）程序尚未实现对用户对话的保留以及memory功能。
+5）程序尚未实现memory功能。
 ![效果示意](https://user-images.githubusercontent.com/49633741/228787095-c9d33f23-21ef-470d-9009-a14a262866a2.png)
