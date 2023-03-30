@@ -20,5 +20,5 @@ This tool is an e-book parsing and conversation tool based on ChatGPT. It includ
 
 4 Conversation records can be downloaded by clicking the link on the interface.
 
-5 The program does not yet implement conversation retention or memory features.
+5 The program does not yet implement the memory feature.
 ![效果示意](https://user-images.githubusercontent.com/49633741/228787169-73c8b0d3-6cd6-4860-adaf-d066c368c69a.png)
