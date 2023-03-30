@@ -1,4 +1,4 @@
-## Readme | [说明]()
+## Readme | [说明](https://github.com/waynia/GPT-epub-chatbot/blob/main/readme-zh_CN.md)
 
 ### Installation
 pip install -r requirements.txt
