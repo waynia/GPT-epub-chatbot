@@ -7,3 +7,4 @@ pandas==1.4.3
 tenacity==8.2.2
 chardet==5.1.0
 Flask-Caching==2.0.2
+tiktoken==0.3.0
