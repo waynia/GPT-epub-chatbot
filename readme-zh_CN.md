@@ -1,9 +1,12 @@
 ## 说明 | [English](https://github.com/waynia/GPT-epub-chatbot/blob/main/readme.md)
 
 ### 程序安装
-pip install -r requirements.txt
 
-在浏览器中打开http://127.0.0.1:5000
+#### 1. 在命令行中，运行 pip install -r requirements.txt
+
+#### 2. 进入项目所在目录，打开命令行窗口，运行 flask run
+
+#### 3. 在浏览器中打开http://127.0.0.1:5000
 
 ### 程序的实现原理
 
