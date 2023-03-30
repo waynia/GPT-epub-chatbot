@@ -170,9 +170,9 @@ def index():
 
     openai_key = request.cookies.get("openai_key")
     embedding_file = request.cookies.get("embedding_file")
-    button_text = "Upload book" if openai_key else "OpenAI Key"
+    button_text = "Upload book" if openai_key else "Input key"
     placeholder_text = "Drop your epub book here" if openai_key else "Enter your OpenAI Key"
-    return render_template("index.html", button_text=button_text, embedding_file=embedding_file,
+    return render_template("index.html", button_text=button_text, openai_key=openai_key, embedding_file=embedding_file,
                            placeholder_text=placeholder_text)
 
 

@@ -207,59 +207,89 @@
                 {% endif %}
             {% endwith %}
         </div>
-        <div class="chat-box" id="chat-window">
+        {% if openai_key  %}
             {% if embedding_file %}
-                <div class="user-input">Hello, Chat!</div>
-                <div class="program-output">Hello! Ask me anything about the book you uploaded.</div>
-            {% endif %}
-        </div>
-        {% if embedding_file %}
-        <div class="download-wrapper">
-            <a href="#" class="download-json" id="download-json" download="chat_history.json">Download Chat History</a>
-        </div>
-        <div class="input-wrapper2">
-            <input type="text" id="input2" onkeyup="handleInput(event)" placeholder="Type your message here...">
-        </div>
-        <script>
-            // 监听input2的输入事件
-            function resetStatusBar2() {
-              const statusBar = document.getElementById('status-bar');
-              statusBar.innerText = "You can click Ctrl+F1 to remove the Open AI Key from your web browser's cookie.";
-            };
+                <div class="chat-box" id="chat-window">
+                    <div class="user-input">Hello, Chat!</div>
+                    <div class="program-output">Hello! Ask me anything about the book you uploaded.</div>
+                </div>
+                <div class="download-wrapper">
+                    <a href="#" class="download-json" id="download-json" download="chat_history.json">Download Chat History</a>
+                </div>
+                <script>
+                    // chat-window相关函数
+                    // 监听chat-box中的鼠标移动
+                    document.getElementById('chat-window').addEventListener('mousemove', resetStatusBar);
 
-            // 下载聊天记录的函数
-            document.getElementById('download-json').addEventListener('click', () => {
-                const chatBox = document.getElementById('chat-window');
-                const userInputs = chatBox.getElementsByClassName('user-input');
-                const programOutputs = chatBox.getElementsByClassName('program-output');
+                    window.onload = async function() {
+                        // 省略其他代码...
 
-                const chatHistory = [];
+                        // 检查服务器上是否存在CSV文件
+                        await checkCSVFile();
+                    };
 
-                for (let i = 0; i < userInputs.length; i++) {
-                    chatHistory.push({
-                        type: 'user',
-                        text: userInputs[i].innerText
+                    async function checkCSVFile() {
+                        const response = await fetch("/check_csv_file");
+                        const data = await response.json();
+
+                        if (data.csv_exists) {
+                            document.getElementById("chat-window").style.display = "flex";
+                            document.getElementById("input2").style.display = "flex";
+                        } else {
+                            document.getElementById("chat-window").style.display = "none";
+                            document.getElementById("input2").style.display = "none";
+                        }
+                    }
+
+                    function scrollToBottom() {
+                        const chatBox = document.getElementById("chat-window");
+                        chatBox.scrollTop = chatBox.scrollHeight;
+                    }
+                </script>
+                <div class="input-wrapper2">
+                    <input type="text" id="input2" onkeyup="handleInput(event)" placeholder="Type your message here...">
+                </div>
+                <script>
+                    // 监听input2的输入事件
+                    function resetStatusBar2() {
+                      const statusBar = document.getElementById('status-bar');
+                      statusBar.innerText = "You can click Ctrl+F1 to remove the Open AI Key from your web browser's cookie.";
+                    };
+
+                    // 下载聊天记录的函数
+                    document.getElementById('download-json').addEventListener('click', () => {
+                        const chatBox = document.getElementById('chat-window');
+                        const userInputs = chatBox.getElementsByClassName('user-input');
+                        const programOutputs = chatBox.getElementsByClassName('program-output');
+
+                        const chatHistory = [];
+
+                        for (let i = 0; i < userInputs.length; i++) {
+                            chatHistory.push({
+                                type: 'user',
+                                text: userInputs[i].innerText
+                            });
+
+                            if (i < programOutputs.length) {
+                                chatHistory.push({
+                                    type: 'program',
+                                    text: programOutputs[i].innerText
+                                });
+                            }
+                        }
+
+                        const json = JSON.stringify(chatHistory, null, 2);
+                        const blob = new Blob([json], {type: 'application/json'});
+                        const url = URL.createObjectURL(blob);
+
+                        const link = document.getElementById('download-json');
+                        link.href = url;
+                        link.download = 'chat_history.json';
                     });
 
-                    if (i < programOutputs.length) {
-                        chatHistory.push({
-                            type: 'program',
-                            text: programOutputs[i].innerText
-                        });
-                    }
-                }
-
-                const json = JSON.stringify(chatHistory, null, 2);
-                const blob = new Blob([json], {type: 'application/json'});
-                const url = URL.createObjectURL(blob);
-
-                const link = document.getElementById('download-json');
-                link.href = url;
-                link.download = 'chat_history.json';
-            });
-
-            document.getElementById('input2').addEventListener('input', resetStatusBar2);
-        </script>
+                    document.getElementById('input2').addEventListener('input', resetStatusBar2);
+                </script>
+            {% endif %}
         {% endif %}
         <div class="status-bar-wrapper">
             <div id="status-bar">You can click Ctrl+F1 to remove the Open AI Key from your web browser's cookie.</div>
@@ -279,9 +309,6 @@
           const statusBar = document.getElementById('status-bar');
           statusBar.innerText = "You can click Ctrl+F1 to remove the Open AI Key from your web browser's cookie.";
         };
-
-        // 监听chat-box中的鼠标移动
-        document.getElementById('chat-window').addEventListener('mousemove', resetStatusBar);
 
 
         // 顶部输入框相关函数
@@ -319,7 +346,7 @@
         }
 
         document.getElementById("key-button").onclick = function () {
-            if (this.innerText === "OpenAI Key") {
+            if (this.innerText === "Input key") {
                 handleApiKeyInput();
             } else {
                 var input = document.createElement("input");
@@ -349,33 +376,6 @@
                 input.click();
             }
         };
-
-
-        // chat-window相关函数
-        window.onload = async function() {
-            // 省略其他代码...
-
-            // 检查服务器上是否存在CSV文件
-            await checkCSVFile();
-        };
-
-        async function checkCSVFile() {
-            const response = await fetch("/check_csv_file");
-            const data = await response.json();
-
-            if (data.csv_exists) {
-                document.getElementById("chat-window").style.display = "flex";
-                document.getElementById("input2").style.display = "flex";
-            } else {
-                document.getElementById("chat-window").style.display = "none";
-                document.getElementById("input2").style.display = "none";
-            }
-        }
-
-        function scrollToBottom() {
-            const chatBox = document.getElementById("chat-window");
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
 
         // 底部输入框相关函数
         async function handleInput(event) {
