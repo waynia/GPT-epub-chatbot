@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask Web Project</title>
+    <style>
+        html {
+            font-size: 16px;
+        }
+
+        body {
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .container {
+            margin: 0 auto;
+            padding: 1rem;
+            max-width: 1200px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .key-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .input-wrapper {
+            height: 30px;
+            display: flex;
+            justify-content: space-between;
+            width: 80%;
+        }
+
+        #key-button {
+            display: flex;
+            background-color: #8dbf8a;
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            text-align: center;
+            text-decoration: none;
+            font-size: 0.5rem;
+
+            cursor: pointer;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        #key-button:hover {
+            background-color: #6ca56c;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        @media (max-width: 600px) {
+            html {
+                font-size: 14px;
+            }
+        }
+
+        @media (min-width: 601px) and (max-width: 1024px) {
+            html {
+                font-size: 15px;
+            }
+        }
+
+        .download-wrapper{
+            height: 30px;
+            display: flex;
+            padding: 0.5rem;
+        }
+
+        .download-json{
+            color: black;
+            font-style: italic;
+            text-decoration: underline;
+        }
+
+        .input-wrapper2 {
+            height: 30px;
+            display: flex;
+            position: relative;
+            width: 100%;
+        }
+
+        #input1 {
+            width: 60%;
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+            resize: none;
+        }
+
+        #input2 {
+            width: 80%;
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+            resize: none;
+        }
+
+        .chat-box {
+            width: 80%;
+            padding: 0.5rem;
+            height: 600px;
+            border: 1px solid #000;
+            border-radius: 5px;
+            overflow-y: scroll;
+            margin: 20px 0;
+
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .user-input {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-radius: 5px;
+            background-color: #8dbf8a;
+            color: white;
+            align-self: flex-end;
+            word-wrap: break-word; /* 允许文本换行 */
+            max-width: 80%; /* 确保消息不超过其容器宽度 */
+        }
+
+        .program-output {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+            color: black;
+            align-self: flex-start;
+            word-wrap: break-word; /* 允许文本换行 */
+            max-width: 80%; /* 确保消息不超过其容器宽度 */
+        }
+
+        .message {
+            margin: 5px;
+            padding: 5px;
+            border: 1px solid #000;
+            border-radius: 5px;
+        }
+
+        .user {
+            text-align: right;
+        }
+
+        .status-bar-wrapper {
+            margin-top: 1rem;
+            color: gray;
+            font-style: italic;
+        }
+
+        .status-bar {
+            width: 80%;
+            height: 50px;
+            border: 1px solid #000;
+            border-radius: 5px;
+            line-height: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body id="body">
+    <div id="overlay" class="overlay">
+        <h1 style="color: white;">Drop your .epub file here</h1>
+    </div>
+    <div class="container">
+        <div class="input-wrapper">
+            <input type="text" id="input1" name="input1" placeholder="{{ placeholder_text }}">
+            <button id="key-button">{{ button_text }}</button>
+        </div>
+        <div class="status-bar-wrapper">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+        <div class="chat-box" id="chat-window">
+            {% if embedding_file %}
+                <div class="user-input">Hello, Chat!</div>
+                <div class="program-output">Hello! Ask me anything about the book you uploaded.</div>
+            {% endif %}
+        </div>
+        {% if embedding_file %}
+        <div class="download-wrapper">
+            <a href="#" class="download-json" id="download-json" download="chat_history.json">Download Chat History</a>
+        </div>
+        <div class="input-wrapper2">
+            <input type="text" id="input2" onkeyup="handleInput(event)" placeholder="Type your message here...">
+        </div>
+        <script>
+            // 监听input2的输入事件
+            function resetStatusBar2() {
+              const statusBar = document.getElementById('status-bar');
+              statusBar.innerText = "You can click Ctrl+F1 to remove the Open AI Key from your web browser's cookie.";
+            };
+
+            // 下载聊天记录的函数
+            document.getElementById('download-json').addEventListener('click', () => {
+                const chatBox = document.getElementById('chat-window');
+                const userInputs = chatBox.getElementsByClassName('user-input');
+                const programOutputs = chatBox.getElementsByClassName('program-output');
+
+                const chatHistory = [];
+
+                for (let i = 0; i < userInputs.length; i++) {
+                    chatHistory.push({
+                        type: 'user',
+                        text: userInputs[i].innerText
+                    });
+
+                    if (i < programOutputs.length) {
+                        chatHistory.push({
+                            type: 'program',
+                            text: programOutputs[i].innerText
+                        });
+                    }
+                }
+
+                const json = JSON.stringify(chatHistory, null, 2);
+                const blob = new Blob([json], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+
+                const link = document.getElementById('download-json');
+                link.href = url;
+                link.download = 'chat_history.json';
+            });
+
+            document.getElementById('input2').addEventListener('input', resetStatusBar2);
+        </script>
+        {% endif %}
+        <div class="status-bar-wrapper">
+            <div id="status-bar">You can click Ctrl+F1 to remove the Open AI Key from your web browser's cookie.</div>
+        </div>
+    </div>
+    <script>
+        // 状态栏相关函数
+        function updateStatusBar(text) {
+            var statusBar = document.getElementById("status-bar");
+            statusBar.innerText = text;
+            setTimeout(function () {
+                statusBar.innerText = "";
+            }, 3000);
+        };
+
+        function resetStatusBar() {
+          const statusBar = document.getElementById('status-bar');
+          statusBar.innerText = "You can click Ctrl+F1 to remove the Open AI Key from your web browser's cookie.";
+        };
+
+        // 监听chat-box中的鼠标移动
+        document.getElementById('chat-window').addEventListener('mousemove', resetStatusBar);
+
+
+        // 顶部输入框相关函数
+        document.addEventListener('keydown', function (event) {
+          if (event.ctrlKey && event.key === 'F1') {
+            // 删除名为'openai_key'的cookie
+            document.cookie = 'openai_key=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            // 刷新页面以更新按钮文本
+            location.reload();
+          }
+        });
+
+        async function handleApiKeyInput() {
+            const input1 = document.getElementById("input1");
+            const apiKey = input1.value.trim();
+
+            const formData = new FormData();
+            formData.append("api_key", apiKey);
+
+            const response = await fetch("/check_api_key", {
+                method: "POST",
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (data.is_valid) {
+                // API Key 有效，保存到 cookie 中
+                document.cookie = `openai_key=${apiKey}; max-age=31536000; path=/`;
+                window.location.reload();
+            } else {
+                // API Key 无效，显示警告
+                alert("Invalid OpenAI Key. Please enter a valid API Key.");
+            }
+        }
+
+        document.getElementById("key-button").onclick = function () {
+            if (this.innerText === "OpenAI Key") {
+                handleApiKeyInput();
+            } else {
+                var input = document.createElement("input");
+                input.type = "file";
+                input.accept = ".epub";
+                input.onchange = function (e) {
+                    var file = e.target.files[0];
+                    var formData = new FormData();
+                    formData.append("file", file);
+
+                    // 在文件上传之前
+                    updateStatusBar("Uploading and analyzing the epub file, this may take a few minutes or more.");
+
+                    fetch("/", {
+                        method: "POST",
+                        body: formData,
+                    })
+
+                    // 文件上传成功后，然后刷新页面
+                    .then(function () {
+                        updateStatusBar("Upload complete!");
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1000);
+                    });
+                };
+                input.click();
+            }
+        };
+
+
+        // chat-window相关函数
+        window.onload = async function() {
+            // 省略其他代码...
+
+            // 检查服务器上是否存在CSV文件
+            await checkCSVFile();
+        };
+
+        async function checkCSVFile() {
+            const response = await fetch("/check_csv_file");
+            const data = await response.json();
+
+            if (data.csv_exists) {
+                document.getElementById("chat-window").style.display = "flex";
+                document.getElementById("input2").style.display = "flex";
+            } else {
+                document.getElementById("chat-window").style.display = "none";
+                document.getElementById("input2").style.display = "none";
+            }
+        }
+
+        function scrollToBottom() {
+            const chatBox = document.getElementById("chat-window");
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // 底部输入框相关函数
+        async function handleInput(event) {
+            if (event.key === "Enter") {
+                // 获取input2和chat-box元素
+                const input2 = document.getElementById("input2");
+                const chatBox = document.getElementById("chat-window");
+
+                // 将input2的文本加粗0.5秒钟
+                input2.style.fontWeight = "bold";
+                setTimeout(function () {
+                    input2.style.fontWeight = "normal";
+                }, 500);
+
+                // 将用户输入的内容添加到chat-window中
+                const userText = input2.value.trim();
+                if (userText) {
+                    // 清空input2的值，并暂时让input2不可用
+                    input2.value = "";
+                    input2.disabled = true;
+
+                    // 将用户提问放入chat-window中
+                    const userMessage = document.createElement("div");
+                    userMessage.className = "user-input";
+                    userMessage.innerText = userText;
+                    chatBox.appendChild(userMessage);
+
+                    // chat-window滚动到底部
+                    scrollToBottom();
+
+                    // 创建一个新的FormData对象，并将用户输入添加到其中
+                    const formData = new FormData();
+                    formData.append("user_input", userText);
+
+                    // 发送请求到后台，处理用户输入并获取结果
+                    const response = await fetch("/process_input", {
+                        method: "POST",
+                        body: formData,
+                    });
+
+                    if (response.redirected) {  // 如果服务器返回的是重定向要求
+                        location.reload(); // 重新加载页面
+                    } else {  // 如果服务器返回的是正常响应
+                        const data = await response.json();
+
+                        // input2重新变为可用
+                        input2.disabled = false;
+
+                        // 将后台处理后的结果添加到chat-box中
+                        const programMessage = document.createElement("div");
+                        programMessage.className = "program-output";
+                        programMessage.innerText = data.response;
+                        chatBox.appendChild(programMessage);
+
+                        // 滚动到底部
+                        scrollToBottom();
+                    }
+                }
+            }
+        }
+
+
+        // 拖放相关函数
+        document.addEventListener("DOMContentLoaded", function () {
+            // 确保按钮文字为 "Upload your book" 时才激活拖放功能
+            var keyButton = document.getElementById("key-button");
+            if (keyButton.innerText !== "Upload your book") {
+                return;
+            }
+
+            var overlay = document.getElementById("overlay");
+
+            function showOverlay() {
+                overlay.style.display = "flex";
+            }
+
+            function hideOverlay() {
+                overlay.style.display = "none";
+            }
+
+            // 添加拖放事件监听器
+            var body = document.getElementById("body");
+            body.addEventListener("dragenter", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                showOverlay();
+            });
+
+            body.addEventListener("dragover", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            body.addEventListener("dragleave", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!body.contains(e.relatedTarget)) {
+                    hideOverlay();
+                }
+            });
+
+            body.addEventListener("drop", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                hideOverlay();
+
+                function uploadFile(file) {
+                    var formData = new FormData();
+                    formData.append("file", file);
+
+                    // 在文件上传之前
+                    updateStatusBar("Uploading...");
+
+                    fetch("/", {
+                        method: "POST",
+                        body: formData,
+                    })
+
+                    // 文件上传成功后，然后刷新页面
+                    .then(function () {
+                        updateStatusBar("Upload complete!");
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1000);
+                    });
+                };
+
+                function allowed_file(filename) {
+                    var extension = filename.split(".").pop().toLowerCase();
+                    return extension === "epub";
+                };
+
+                var file = e.dataTransfer.files[0];
+                if (file && allowed_file(file.name)) {
+                    uploadFile(file);
+                } else {
+                    updateStatusBar("Invalid file format. Only .epub files are allowed.");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
