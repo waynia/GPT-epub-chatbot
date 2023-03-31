@@ -67,9 +67,9 @@ def parse_book(file_path):
 
     # 最后判断embedding文件是否生成
     if os.path.exists(embedding_file):
-        return embedding_file
+        flash('The summary csv file for this uploaded book has been successfully created.')
     else:  # 如果最后未生成embedding文件，则返回None；理论上不会出现这种情况
-        return None
+        flash('The summary csv file for this uploaded book failed to create.')
 
 
 def check_api_key(api_key):
@@ -135,12 +135,27 @@ def check_api_key_route():
     return jsonify({"is_valid": is_valid})
 
 
+#  用于判断embedding.csv文件是否存在，存在返回true，不存在返回false
+def has_embedding_file():
+    uploads_folder = os.path.join(os.getcwd(), 'uploads')
+    for file in os.listdir(uploads_folder):
+        if file.endswith("_embedding.csv"):
+            return True
+    return False
+
+
+#  用于返回uploads文件夹下第一个embedding.csv文件的完整路径
+def find_first_embedding_file():
+    folder_path = os.path.join(os.getcwd(), 'uploads')
+    for file in os.listdir(folder_path):
+        if file.endswith("_embedding.csv"):
+            return os.path.join(folder_path, file)
+    return None
+
+
 @app.route("/check_csv_file", methods=["GET"])
 def check_csv_file():
-    uploads_folder = os.path.join(os.getcwd(), 'uploads')
-    csv_files = [f for f in os.listdir(uploads_folder) if f.endswith('_embedding.csv')]
-
-    if csv_files:
+    if has_embedding_file():
         return jsonify({"csv_exists": True})
     else:
         return jsonify({"csv_exists": False})
@@ -155,12 +170,8 @@ def index():
                 filename = custom_secure_filename(file.filename)
                 file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
                 file.save(file_path)
-                embedding_file = parse_book(file_path)
+                parse_book(file_path)
                 resp = make_response(redirect(url_for("index")))
-                # 如果embedding_file成功生成，则在cookie中存入embedding文件路径；
-                # 如果用户上传多部epub，则cookie中只保留最后一部上传epub对应的embedding文件路径。该cookie只用于控制前端是否显示对话
-                if embedding_file is not None:
-                    resp.set_cookie("embedding_file", embedding_file)
                 return resp
         else:
             openai_key = request.form["input1"]
@@ -169,7 +180,10 @@ def index():
             return resp
 
     openai_key = request.cookies.get("openai_key")
-    embedding_file = request.cookies.get("embedding_file")
+    if has_embedding_file():
+        embedding_file = find_first_embedding_file()
+    else:
+        embedding_file = None
     button_text = "Upload book" if openai_key else "Input key"
     placeholder_text = "Drop your epub book here" if openai_key else "Enter your OpenAI Key"
     return render_template("index.html", button_text=button_text, openai_key=openai_key, embedding_file=embedding_file,
