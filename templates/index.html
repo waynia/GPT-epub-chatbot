@@ -42,6 +42,16 @@
             width: 80%;
         }
 
+        #input1 {
+            width: 60%;
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+            resize: none;
+        }
+
         #key-button {
             display: flex;
             background-color: #8dbf8a;
@@ -86,43 +96,18 @@
             }
         }
 
-        .download-wrapper{
-            height: 30px;
-            display: flex;
-            padding: 0.5rem;
+        .mode-container {
+          display: flex;
+          justify-content: left;
+          width: 80%;
         }
 
-        .download-json{
-            color: black;
-            font-style: italic;
-            text-decoration: underline;
-        }
-
-        .input-wrapper2 {
-            height: 30px;
-            display: flex;
-            position: relative;
-            width: 100%;
-        }
-
-        #input1 {
-            width: 60%;
-            padding: 0.5rem;
-            font-size: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            outline: none;
-            resize: none;
-        }
-
-        #input2 {
-            width: 80%;
-            padding: 0.5rem;
-            font-size: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            outline: none;
-            resize: none;
+        .form-check-inline {
+          display: flex;
+          align-items: center;
+          margin-right: 1rem;
+          margin-top: 1rem;
+          margin-bottom: 1rem;
         }
 
         .chat-box {
@@ -173,6 +158,35 @@
             text-align: right;
         }
 
+        .download-wrapper{
+            height: 30px;
+            display: flex;
+            padding: 0.5rem;
+        }
+
+        .download-json{
+            color: black;
+            font-style: italic;
+            text-decoration: underline;
+        }
+
+        .input-wrapper2 {
+            height: 30px;
+            display: flex;
+            position: relative;
+            width: 100%;
+        }
+
+        #input2 {
+            width: 80%;
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+            resize: none;
+        }
+
         .status-bar-wrapper {
             margin-top: 1rem;
             color: gray;
@@ -198,6 +212,28 @@
             <input type="text" id="input1" name="input1" placeholder="{{ placeholder_text }}">
             <button id="key-button">{{ button_text }}</button>
         </div>
+        {% if openai_key  %}
+        <div class="mode-container">
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="mode" id="simple_mode" value="simple" checked>
+              <label class="form-check-label" for="simple_mode" onmouseover="updateStatusBar('The bot will be stiff, but the cost is economic')" onmouseout="resetStatusBar()">Simple Mode</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="mode" id="recursive_mode" value="recursive">
+              <label class="form-check-label" for="recursive_mode" onmouseover="updateStatusBar('The bot will be smart, but the cost is relatively high')" onmouseout="resetStatusBar()">Recursive Mode</label>
+            </div>
+        </div>
+        <script>
+            function getSelectedMode() {
+              let modes = document.getElementsByName("mode");
+              for (let i = 0; i < modes.length; i++) {
+                if (modes[i].checked) {
+                  return modes[i].value;
+                }
+              }
+            }
+        </script>
+        {% endif %}
         <div class="status-bar-wrapper">
             {% with messages = get_flashed_messages() %}
                 {% if messages %}
@@ -321,6 +357,7 @@
           }
         });
 
+        // 处理api key输入的函数
         async function handleApiKeyInput() {
             const input1 = document.getElementById("input1");
             const apiKey = input1.value.trim();
@@ -345,6 +382,12 @@
             }
         }
 
+        // 判断mode单选框是否被渲染
+        function isModeRadioButtonPresent() {
+          let modes = document.getElementsByName("mode");
+          return modes.length > 0;
+        }
+
         document.getElementById("key-button").onclick = function () {
             if (this.innerText === "Input key") {
                 handleApiKeyInput();
@@ -354,8 +397,10 @@
                 input.accept = ".epub";
                 input.onchange = function (e) {
                     var file = e.target.files[0];
+                    const modeData = isModeRadioButtonPresent() ? getSelectedMode() : null;
                     var formData = new FormData();
                     formData.append("file", file);
+                    formData.append("mode", modeData);
 
                     // 在文件上传之前
                     updateStatusBar("Uploading and analyzing the epub file, this may take a few minutes or more.");

@@ -32,7 +32,7 @@ def api_key_in_cookie():
         return True
 
 
-def parse_book(file_path):
+def parse_book(file_path, recursive=False):
     #  每次对于上传的epub文件做分析之前，都重新从客户端的cookie中读取Open AI Key，以避免用户主动删除导致程序出错
     if api_key_in_cookie():  # 如果在cookie中未找到Open AI Key则直接返回；理论上不会出现这种情况
         return None
@@ -46,7 +46,7 @@ def parse_book(file_path):
         body_max_len = MAX_SECTION_LEN - header_len  # 提问体最大长度
         content_list = epub_parser(file_path)  # 内容列表中的每条记录，都是全文的一个片段
         total_summary_list = []  # 存储全书的总结内容，包括每若干个片段，每章，直到全书
-        segment_summary(header, body_max_len, content_list, total_summary_list, True)  # 递归总结每个章节的内容
+        segment_summary(header, body_max_len, content_list, total_summary_list, recursive)  # 递归总结每个章节的内容
         chapter_summary(header, body_max_len, content_list, total_summary_list)  # 递归总结全书的内容
         write_summary_to_csv(csv_file, total_summary_list)  # 将总结内容保存到硬盘中
 
@@ -164,16 +164,23 @@ def check_csv_file():
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        if "file" in request.files:
+        if "file" in request.files:  # 处理上传的epub书籍
             file = request.files["file"]
             if file and allowed_file(file.filename):
+                mode = request.form.get('mode', None)  # 获取总结epub文件的模式，simple或者recursive
+
                 filename = custom_secure_filename(file.filename)
                 file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
                 file.save(file_path)
-                parse_book(file_path)
+                if mode == "simple":  # mode为simple，不使用递归总结
+                    parse_book(file_path, False)
+                elif mode == "recursive":  # mode为recursive，使用递归总结
+                    parse_book(file_path, True)
+                else:  # 其余情况，也不使用递归总结。一般而言不会出现这种情况
+                    parse_book(file_path, False)
                 resp = make_response(redirect(url_for("index")))
                 return resp
-        else:
+        else:  # 处理用户输入的Open AI Key
             openai_key = request.form["input1"]
             resp = make_response(redirect(url_for("index")))
             resp.set_cookie("openai_key", openai_key)
