@@ -28,6 +28,23 @@
             flex-direction: column;
         }
 
+        .title-div {
+          background-color: #d1d1d1;
+          padding-top: 10px;
+          padding-bottom: 10px;
+          text-align: center;
+          border-radius: 8px;
+          /* box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); */
+          width: 80%
+        }
+
+        .title-div h1 {
+          font-size: 18px;
+          font-weight: bold;
+          margin: 0;
+          color: #333;
+        }
+
         .key-wrapper {
             display: flex;
             justify-content: center;
@@ -40,6 +57,7 @@
             display: flex;
             justify-content: space-between;
             width: 80%;
+            margin-top: 1rem;
         }
 
         #input1 {
@@ -208,31 +226,38 @@
         <h1 style="color: white;">Drop your .epub file here</h1>
     </div>
     <div class="container">
-        <div class="input-wrapper">
-            <input type="text" id="input1" name="input1" placeholder="{{ placeholder_text }}">
-            <button id="key-button">{{ button_text }}</button>
-        </div>
+        {% if book_name %}
+            <div class="title-div"><h1>{{ book_name }}</h1></div>
+        {% endif %}
+        {% if embedding_file is none or openai_key is none  %}
+            <div class="input-wrapper">
+                <input type="text" id="input1" name="input1" placeholder="{{ placeholder_text }}">
+                <button id="key-button">{{ button_text }}</button>
+            </div>
+        {% endif %}
         {% if openai_key  %}
-        <div class="mode-container">
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="radio" name="mode" id="simple_mode" value="simple" checked>
-              <label class="form-check-label" for="simple_mode" onmouseover="updateStatusBar('The bot will be stiff, but the cost is economic')" onmouseout="resetStatusBar()">Simple Mode</label>
-            </div>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="radio" name="mode" id="recursive_mode" value="recursive">
-              <label class="form-check-label" for="recursive_mode" onmouseover="updateStatusBar('The bot will be smart, but the cost is relatively high')" onmouseout="resetStatusBar()">Recursive Mode</label>
-            </div>
-        </div>
-        <script>
-            function getSelectedMode() {
-              let modes = document.getElementsByName("mode");
-              for (let i = 0; i < modes.length; i++) {
-                if (modes[i].checked) {
-                  return modes[i].value;
-                }
-              }
-            }
-        </script>
+            {% if not embedding_file  %}
+                <div class="mode-container">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="mode" id="simple_mode" value="simple" checked>
+                      <label class="form-check-label" for="simple_mode" onmouseover="updateStatusBar('The bot will be stiff, but the cost is economic')" onmouseout="resetStatusBar()">Simple Mode</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="mode" id="recursive_mode" value="recursive">
+                      <label class="form-check-label" for="recursive_mode" onmouseover="updateStatusBar('The bot will be smart, but the cost is relatively high')" onmouseout="resetStatusBar()">Recursive Mode</label>
+                    </div>
+                </div>
+                <script>
+                    function getSelectedMode() {
+                      let modes = document.getElementsByName("mode");
+                      for (let i = 0; i < modes.length; i++) {
+                        if (modes[i].checked) {
+                          return modes[i].value;
+                        }
+                      }
+                    }
+                </script>
+            {% endif %}
         {% endif %}
         <div class="status-bar-wrapper">
             {% with messages = get_flashed_messages() %}

@@ -18,6 +18,9 @@ app.config["ALLOWED_EXTENSIONS"] = {"epub"}
 app.config['persistence'] = True
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 
+# 记录上传epub的名字
+app.config['book_name'] = ''
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
@@ -186,15 +189,23 @@ def index():
             resp.set_cookie("openai_key", openai_key)
             return resp
 
-    openai_key = request.cookies.get("openai_key")
-    if has_embedding_file():
+    openai_key = request.cookies.get("openai_key")  # 处理传给html的openai_key参数
+    if has_embedding_file():  # 处理传给html的embedding_file参数
         embedding_file = find_first_embedding_file()
     else:
         embedding_file = None
+
+    folder_path = os.path.join(os.getcwd(), 'uploads')  # 处理传给html的title参数
+    for file in os.listdir(folder_path):
+        if file.endswith("_embedding.csv"):
+            app.config['book_name'] = file[:-len('_embedding.csv')]  # 将找到的embedding.csv文件的名称传递到前端
+            break
+    book_name = app.config['book_name']
+
     button_text = "Upload book" if openai_key else "Input key"
     placeholder_text = "Drop your epub book here" if openai_key else "Enter your OpenAI Key"
     return render_template("index.html", button_text=button_text, openai_key=openai_key, embedding_file=embedding_file,
-                           placeholder_text=placeholder_text)
+                           placeholder_text=placeholder_text, book_name=book_name)
 
 
 # 从服务器uploads文件夹里获取所有背景文字，及其embedding信息
