@@ -271,8 +271,7 @@
         {% if openai_key  %}
             {% if embedding_file %}
                 <div class="chat-box" id="chat-window">
-                    <div class="user-input">Hello, Chat!</div>
-                    <div class="program-output">Hello! Ask me anything about the book you uploaded.</div>
+                    <div class="program-output">你好，欢迎向我提出《{{ book_name }}》一书的各种问题。比如：《{{ book_name }}》主要讲了什么？</div>
                 </div>
                 <div class="download-wrapper">
                     <a href="#" class="download-json" id="download-json" download="chat_history.json">Download Chat History</a>
