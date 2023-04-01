@@ -3,6 +3,7 @@ import re
 from flask import Flask, render_template, request, make_response, redirect, url_for, jsonify, flash
 from flask_caching import Cache
 import chardet
+import argparse
 from summary_lib import *
 from embedding_lib import compute_doc_embeddings
 from book_parser import epub_parser
@@ -21,6 +22,10 @@ cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 # 记录上传epub的名字
 app.config['book_name'] = ''
 
+# 记录api的调用次数
+app.config['max_request'] = float('inf')
+api_calls = 0
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
@@ -33,6 +38,12 @@ def api_key_in_cookie():
     else:
         openai.api_key = request.cookies.get("openai_key")
         return True
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Flask app with command line arguments")
+    parser.add_argument("-m", "--maximal", help="maximal request times of the total app", type=str, default=1000)
+    return parser.parse_args()
 
 
 def parse_book(file_path, recursive=False):
@@ -258,43 +269,51 @@ def process_input():
     if not check_embedding_file_integrity():
         return jsonify({"response": "Error in context files on the server."})
 
-    # 获取回答用的背景内容
-    if not app.config["persistence"]:  # 如果Flask程序被设置为非持久化，则每次获取背景文字，都从uploads中读取数据。不推荐
-        context_embeddings = get_context_for_prompt()
-    else:  # 如果已经设置为持久化
-        if cache.get("context") is None:  # 如果此前程序没有获取过背景内容，那么第一次会从硬盘中读取，然后存入cache中
+    global api_calls
+    if api_calls < app.config['max_request']:  # 首先判断open ai的api调用次数有没有达到允许的最大值
+        # 获取回答用的背景内容
+        if not app.config["persistence"]:  # 如果Flask程序被设置为非持久化，则每次获取背景文字，都从uploads中读取数据。不推荐
             context_embeddings = get_context_for_prompt()
-            cache.set("context", context_embeddings)
-        else:  # 如果此前程序获取了背景内容，则从cache中读取
-            context_embeddings = cache.get("context")
+        else:  # 如果已经设置为持久化
+            if cache.get("context") is None:  # 如果此前程序没有获取过背景内容，那么第一次会从硬盘中读取，然后存入cache中
+                context_embeddings = get_context_for_prompt()
+                cache.set("context", context_embeddings)
+            else:  # 如果此前程序获取了背景内容，则从cache中读取
+                context_embeddings = cache.get("context")
 
-    # 然后生成背景文字
-    header = """请基于下面给定的背景文字回复用户输入,如果答案不包含在背景文字中，请说“我不知道”\n\n背景文字:\n """
-    most_relevant_document_sections = embedding_relevance(user_input, context_embeddings, EMBEDDING_MODEL)
-    chosen_sections = []
-    chosen_sections_len = 0
-    separator_len = num_tokens_from_string(SEPARATOR)
-    for _, section_index in most_relevant_document_sections:  # Add contexts until we run out of space.
-        if isinstance(section_index, str):  # 如果是字符串，则直接赋值给document_section
-            document_section = section_index  # 返回正确结果时，section_index是str类型
-            chosen_sections.append(SEPARATOR + document_section.replace("\n", " "))
-            token_count = num_tokens_from_string(document_section)
-            chosen_sections_len += token_count + separator_len
-        else:  # 一般而言，不会出现这种情况
+        # 然后生成背景文字
+        header = """请基于下面给定的背景文字回复用户输入,如果答案不包含在背景文字中，请说“我不知道”\n\n背景文字:\n """
+        most_relevant_document_sections = embedding_relevance(user_input, context_embeddings, EMBEDDING_MODEL)
+        chosen_sections = []
+        chosen_sections_len = 0
+        separator_len = num_tokens_from_string(SEPARATOR)
+        for _, section_index in most_relevant_document_sections:  # Add contexts until we run out of space.
+            if isinstance(section_index, str):  # 如果是字符串，则直接赋值给document_section
+                document_section = section_index  # 返回正确结果时，section_index是str类型
+                chosen_sections.append(SEPARATOR + document_section.replace("\n", " "))
+                token_count = num_tokens_from_string(document_section)
+                chosen_sections_len += token_count + separator_len
+            else:  # 一般而言，不会出现这种情况
+                return jsonify({"response": "Error in finding context"})
+            if chosen_sections_len > MAX_SECTION_LEN:
+                break
+
+        # 最后生成prompt并输出给GPT，获取回答
+        if chosen_sections_len == 0:  # 一般而言，不会出现这种情况
             return jsonify({"response": "Error in finding context"})
-        if chosen_sections_len > MAX_SECTION_LEN:
-            break
-
-    # 最后生成prompt并输出给GPT，获取回答
-    if chosen_sections_len == 0:  # 一般而言，不会出现这种情况
-        return jsonify({"response": "Error in finding context"})
-    else:  # 根据prompt，调用GPT生成回答并返回页面
-        prompt = header + "".join(chosen_sections) + "\n\n 用户输入: " + user_input
-        gpt_response = get_response(prompt)
-        # 检查字符串是否以"？\n\n答案: "开头，这是目前OpenAI输出的response的开头，有时候前面也不会出现
-        filtered_response = re.sub(r'^(\?|\n|？|Answer: |答案|：|:|\s)+', '', gpt_response)
-        return jsonify({"response": filtered_response})
+        else:  # 根据prompt，调用GPT生成回答并返回页面
+            prompt = header + "".join(chosen_sections) + "\n\n 用户输入: " + user_input
+            gpt_response = get_response(prompt)
+            api_calls += 1  # 更新api的调用次数
+            # 检查字符串是否以"？\n\n答案: "开头，这是目前OpenAI输出的response的开头，有时候前面也不会出现
+            filtered_response = re.sub(r'^(\?|\n|？|Answer: |答案|：|:|\s)+', '', gpt_response)
+            return jsonify({"response": filtered_response})
+    else:
+        return jsonify({"response": "The number of api call has reached its maximum, "
+                                    "please contact the service provider."})
 
 
 if __name__ == "__main__":
+    args = parse_arguments()
+    app.config['max_request'] = int(args.maximal)  # max_request记录程序运行者输入的api最大调用次数
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
