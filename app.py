@@ -37,7 +37,7 @@ def api_key_in_cookie():
 
 def parse_book(file_path, recursive=False):
     #  每次对于上传的epub文件做分析之前，都重新从客户端的cookie中读取Open AI Key，以避免用户主动删除导致程序出错
-    if api_key_in_cookie():  # 如果在cookie中未找到Open AI Key则直接返回；理论上不会出现这种情况
+    if not api_key_in_cookie():  # 如果在cookie中未找到Open AI Key则直接返回；理论上不会出现这种情况
         return None
 
     # 首先调用OpenAI API总结全书内容，生成保存总结内容的csv
